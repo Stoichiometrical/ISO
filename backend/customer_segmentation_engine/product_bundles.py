@@ -132,46 +132,46 @@ def get_association_info(api_name, segment_names):
     return all_associations_df
 
 
-# def save_custom_discounts(data, file_name, root_path):
-#     """
-#     Converts a dictionary to a JSON file and saves it to the api.
-#
-#     :param data: The dictionary to be converted.
-#     :param file_name: The name of the JSON file to save.
-#     :param root_path: The root directory where the JSON file will be saved.
-#     """
-#     try:
-#         # Ensure the root path exists, if not create it
-#
-#         if not os.path.exists(root_path):
-#             os.makedirs(root_path)
-#
-#         # Create the full file path
-#         file_path = os.path.join(root_path, file_name)
-#
-#         # Write the data to the JSON file
-#         with open(file_path, 'w') as file:
-#             json.dump(data, file, indent=4)
-#
-#         print(f"Data has been saved to {file_path}")
-#     except Exception as e:
-#         print(f"An error occurred: {e}")
-
-
-def save_custom_discounts(data):
+def save_custom_discounts(data, file_name, root_path):
     """
-    Converts a dictionary to a JSON string.
+    Converts a dictionary to a JSON file and saves it to the api.
 
     :param data: The dictionary to be converted.
-    :return: JSON string of the data.
+    :param file_name: The name of the JSON file to save.
+    :param root_path: The root directory where the JSON file will be saved.
     """
     try:
-        # Convert the data to a JSON string
-        json_data = json.dumps(data, indent=4)
-        return json_data
+        # Ensure the root path exists, if not create it
+
+        if not os.path.exists(root_path):
+            os.makedirs(root_path)
+
+        # Create the full file path
+        file_path = os.path.join(root_path, file_name)
+
+        # Write the data to the JSON file
+        with open(file_path, 'w') as file:
+            json.dump(data, file, indent=4)
+
+        print(f"Data has been saved to {file_path}")
     except Exception as e:
-        logging.error(f"An error occurred while converting data to JSON: {e}")
-        raise
+        print(f"An error occurred: {e}")
+
+
+# def save_custom_discounts(data):
+#     """
+#     Converts a dictionary to a JSON string.
+#
+#     :param data: The dictionary to be converted.
+#     :return: JSON string of the data.
+#     """
+#     try:
+#         # Convert the data to a JSON string
+#         json_data = json.dumps(data, indent=4)
+#         return json_data
+#     except Exception as e:
+#         logging.error(f"An error occurred while converting data to JSON: {e}")
+#         raise
 
 
 def get_bundles(df):
