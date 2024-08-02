@@ -544,12 +544,18 @@ def get_sales_data():
 @app.route('/create_project', methods=['POST'])
 def start_test():
     try:
+        print("Received request to create a new project.")
+
         projectName = request.form['projectName']
+        print(f"Project Name: {projectName}")
+
         sales_file = request.files['salesFile']
         customer_file = request.files['customerFile']
         date_column = request.form['dateColumn']
         quantity_column = request.form['quantityColumn']
         price_column = request.form['priceColumn']
+
+        print("Received files and form data.")
 
         # Generate a unique ID and create a new folder
         unique_id = shortuuid.uuid()
@@ -557,39 +563,55 @@ def start_test():
         full_folder_path = os.path.join(ROOT_PATH, folder_name)
         os.makedirs(full_folder_path, exist_ok=True)  # Create the full path
 
+        print(f"Created folder: {full_folder_path}")
+
         # Save the uploaded customer file in the new folder
         customer_file_path = os.path.join(full_folder_path, 'customer_data.csv')
         customer_file.save(customer_file_path)
 
+        print(f"Saved customer file to: {customer_file_path}")
+
         # Process and save the sales file with conventional column names
         sales_df = pd.read_csv(sales_file)
+        print("Read sales file into DataFrame.")
+
         sales_df.rename(columns={
             date_column: 'Date',
             quantity_column: 'Quantity',
             price_column: 'UnitPrice'
         }, inplace=True)
+
         sales_file_path = os.path.join(full_folder_path, 'sales_data.csv')
         sales_df.to_csv(sales_file_path, index=False)
+
+        print(f"Renamed columns and saved sales file to: {sales_file_path}")
 
         # Verify if the renamed columns exist
         if 'Date' not in sales_df.columns or 'Quantity' not in sales_df.columns or 'UnitPrice' not in sales_df.columns:
             raise Exception("Column renaming failed. Please check the column names.")
 
+        print("Verified renamed columns.")
+
         # Call train_model and get month_names
         sales = preprocess_sales_data(sales_df)
+        print("Preprocessed sales data.")
+
         model, future, forecast, mape, forecasted, month_names = train_model(sales)
-        print(f"Month Here: ", month_names)
+        print(f"Trained model and generated forecast. Month Names: {month_names}")
 
         # Save forecasted data to CSV
         forecasted.to_csv(os.path.join(full_folder_path, "forecast_model_results.csv"), index=False)
+        print("Saved forecasted data to CSV.")
 
         # Save monthly forecast data to CSV
         for month in month_names:
             monthly_data = forecasted[forecasted['Month'] == month]
             monthly_file_path = os.path.join(full_folder_path, f"{month}.csv")
             monthly_data.to_csv(monthly_file_path, index=False)
+            print(f"Saved monthly data for {month} to: {monthly_file_path}")
 
         # Call the secondary service to generate customer segments
+        print("Calling secondary service to generate customer segments.")
         response = requests.post('http://localhost:5000/initiate-segments', data={
             'sales_file_path': sales_file_path,
             'folder_name': folder_name,
@@ -599,6 +621,8 @@ def start_test():
         # Check if the response is not OK
         if response.status_code != 200:
             raise Exception(f'Secondary service failed with status code {response.status_code}: {response.text}')
+
+        print("Secondary service completed successfully.")
 
         # Return folder name and project ID
         return jsonify(
@@ -798,4 +822,4 @@ def not_found_error(error):
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0',port=5002)
+    app.run(port=5002)

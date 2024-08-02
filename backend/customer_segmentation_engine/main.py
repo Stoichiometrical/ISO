@@ -713,52 +713,71 @@ CORS(app)
 @app.route('/initiate-segments', methods=['POST'])
 def initiate_segments():
     try:
+        print("Received request to initiate segments.")
+
         # Get the form data
         sales_file_path = request.form['sales_file_path']
+        print(f"Sales file path: {sales_file_path}")
+
         folder_name = request.form['folder_name']
+        print(f"Folder name: {folder_name}")
+
         customer_file_path = request.form['customer_file_path']
+        print(f"Customer file path: {customer_file_path}")
+
         root_path = f"{ROOT_PATH}/{folder_name}"
+        print(f"Root path: {root_path}")
 
         df = pd.read_csv(sales_file_path)
         df['id'] = [shortuuid.uuid() for _ in range(len(df))]
         products_data_path = os.path.join(root_path, 'products_data.csv')
+
         print("Generating products dataset...")
         products_data = generate_products_data(df)
         products_data.to_csv(products_data_path, index=False)
+        print(f"Saved products dataset to: {products_data_path}")
 
         df['Date'] = pd.to_datetime(df['Date'])
         df = df[df["TotalPrice"] > 0]
         summary = prepare_data(df, customer_id_col="CustomerID", datetime_col='Date',
                                monetary_value_col='TotalPrice', observation_period_end=max(df["Date"]))
 
+        print("Fitting models...")
         bgf, ggf = fit_models(summary)
         summary = predict_variables(summary, bgf, ggf, threshold=0.5)
         summary = create_segment_columns(summary, recency='recency', frequency='frequency',
                                          monetary_value='monetary_value',
                                          clv='predicted_clv')
+        print("Models fitted and summary prepared.")
 
         segment_stats, subsegment_stats, percentages_dict, all_data_dict = calculate_descriptive_statistics(
             summary, fields=['probability_alive', 'predicted_purchases', 'predicted_clv', 'estimated_monetary_value']
         )
-        segments = summary[["CustomerID", "Segment", "Subsegment"]]
+        print("Descriptive statistics calculated.")
 
+        segments = summary[["CustomerID", "Segment", "Subsegment"]]
         merged = pd.merge(df, segments, on='CustomerID', how='left')
+        print("Segments merged with original data.")
 
         if not os.path.exists(root_path):
             os.makedirs(root_path)
+            print(f"Created directory: {root_path}")
 
         summary.to_csv(os.path.join(root_path, 'segment_data.csv'), index=False)
         merged.to_csv(os.path.join(root_path, 'segment_transactions.csv'), index=False)
         segment_stats.to_csv(os.path.join(root_path, 'segment_stats.csv'), index=False)
         subsegment_stats.to_csv(os.path.join(root_path, 'subsegment_stats.csv'), index=False)
+        print("Saved summary, merged data, and statistics to CSV files.")
 
         with open(os.path.join(root_path, 'segment_percentages.json'), 'w') as f:
             json.dump(percentages_dict, f)
         with open(os.path.join(root_path, 'segment_compositions.json'), 'w') as f:
             json.dump(all_data_dict, f)
+        print("Saved segment percentages and compositions to JSON files.")
 
         # Get segment transactions
         high_value_df, risk_df, nurture_df = get_segment_transactions(merged)
+        print("Segment transactions extracted.")
 
         # Save segment transactions to CSV files
         high_value_path = os.path.join(root_path, 'high_value_transactions.csv')
@@ -768,12 +787,14 @@ def initiate_segments():
         high_value_df.to_csv(high_value_path, index=False)
         risk_df.to_csv(risk_path, index=False)
         nurture_df.to_csv(nurture_path, index=False)
+        print("Saved high value, risk, and nurture transactions to CSV files.")
 
         return jsonify({'message': 'Customer segments generated successfully.'})
 
     except Exception as e:
-        print(e)
+        print("Exception:", e)
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/get_customer_segments', methods=['GET'])
 def get_customer_segments():

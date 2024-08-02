@@ -51,10 +51,10 @@ export function PromoSect() {
                 <div className="font-bold my-2 text-center">Recommended Promotional Periods</div>
                 {promoPeriods.map((promo, index) => (
                     <div key={index} className="flex justify-between items-center p-2">
-                        <div>{promo.Date}</div>
+                        <div>{promo.date}</div>
                         <div className="flex gap-2 items-center justify-center">
-                            <div>{promo["Promotion Type"]}</div>
-                            {promo["Promotion Type"] === 'Peak' ? (
+                            <div>{promo["promo"] }</div>
+                            {promo["promo"] === 'Peak' ? (
                                 <FaCaretUp className="text-2xl text-green-600" />
                             ) : (
                                 <FaCaretDown className="text-2xl text-red-600" />
