@@ -694,8 +694,9 @@ import shortuuid
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 
-from customer_segmentation import  prepare_data, fit_models, \
-    predict_variables, calculate_descriptive_statistics, create_segment_columns, create_marketing_data
+from customer_segmentation import prepare_data, fit_models, \
+    predict_variables, calculate_descriptive_statistics, create_segment_columns, create_marketing_data, \
+    calculate_segment_averages
 from data_generation import generate_products_data, get_segment_transactions, \
     generate_bundle_info
 from order_analysis_offers import apply_discount_tier, load_custom_discounts, \
@@ -708,6 +709,94 @@ ROOT_PATH = "../s3"
 
 app = Flask(__name__)
 CORS(app)
+
+
+# @app.route('/initiate-segments', methods=['POST'])
+# def initiate_segments():
+#     try:
+#         print("Received request to initiate segments.")
+#
+#         # Get the form data
+#         sales_file_path = request.form['sales_file_path']
+#         print(f"Sales file path: {sales_file_path}")
+#
+#         folder_name = request.form['folder_name']
+#         print(f"Folder name: {folder_name}")
+#
+#         customer_file_path = request.form['customer_file_path']
+#         print(f"Customer file path: {customer_file_path}")
+#
+#         root_path = f"{ROOT_PATH}/{folder_name}"
+#         print(f"Root path: {root_path}")
+#
+#         df = pd.read_csv(sales_file_path)
+#         df['id'] = [shortuuid.uuid() for _ in range(len(df))]
+#         products_data_path = os.path.join(root_path, 'products_data.csv')
+#
+#         print("Generating products dataset...")
+#         products_data = generate_products_data(df)
+#         products_data.to_csv(products_data_path, index=False)
+#         print(f"Saved products dataset to: {products_data_path}")
+#
+#         df['Date'] = pd.to_datetime(df['Date'])
+#         df = df[df["TotalPrice"] > 0]
+#         summary = prepare_data(df, customer_id_col="CustomerID", datetime_col='Date',
+#                                monetary_value_col='TotalPrice', observation_period_end=max(df["Date"]))
+#
+#         print("Fitting models...")
+#         bgf, ggf = fit_models(summary)
+#         summary = predict_variables(summary, bgf, ggf, threshold=0.5)
+#         summary = create_segment_columns(summary, recency='recency', frequency='frequency',
+#                                          monetary_value='monetary_value',
+#                                          clv='predicted_clv')
+#         summary_path = os.path.join(root_path, 'summary.csv')
+#         summary.to_csv(summary_path, index=False)
+#         print("Models fitted and summary prepared.")
+#
+#         segment_stats, subsegment_stats, percentages_dict, all_data_dict = calculate_descriptive_statistics(
+#             summary, fields=['probability_alive', 'predicted_purchases', 'predicted_clv', 'estimated_monetary_value']
+#         )
+#         print("Descriptive statistics calculated.")
+#
+#         segments = summary[["CustomerID", "Segment", "Subsegment"]]
+#         merged = pd.merge(df, segments, on='CustomerID', how='left')
+#         print("Segments merged with original data.")
+#
+#         if not os.path.exists(root_path):
+#             os.makedirs(root_path)
+#             print(f"Created directory: {root_path}")
+#
+#         summary.to_csv(os.path.join(root_path, 'segment_data.csv'), index=False)
+#         merged.to_csv(os.path.join(root_path, 'segment_transactions.csv'), index=False)
+#         segment_stats.to_csv(os.path.join(root_path, 'segment_stats.csv'), index=False)
+#         subsegment_stats.to_csv(os.path.join(root_path, 'subsegment_stats.csv'), index=False)
+#         print("Saved summary, merged data, and statistics to CSV files.")
+#
+#         with open(os.path.join(root_path, 'segment_percentages.json'), 'w') as f:
+#             json.dump(percentages_dict, f)
+#         with open(os.path.join(root_path, 'segment_compositions.json'), 'w') as f:
+#             json.dump(all_data_dict, f)
+#         print("Saved segment percentages and compositions to JSON files.")
+#
+#         # Get segment transactions
+#         high_value_df, risk_df, nurture_df = get_segment_transactions(merged)
+#         print("Segment transactions extracted.")
+#
+#         # Save segment transactions to CSV files
+#         high_value_path = os.path.join(root_path, 'high_value_transactions.csv')
+#         risk_path = os.path.join(root_path, 'risk_transactions.csv')
+#         nurture_path = os.path.join(root_path, 'nurture_transactions.csv')
+#
+#         high_value_df.to_csv(high_value_path, index=False)
+#         risk_df.to_csv(risk_path, index=False)
+#         nurture_df.to_csv(nurture_path, index=False)
+#         print("Saved high value, risk, and nurture transactions to CSV files.")
+#
+#         return jsonify({'message': 'Customer segments generated successfully.'})
+#
+#     except Exception as e:
+#         print("Exception:", e)
+#         return jsonify({'error': str(e)}), 500
 
 
 @app.route('/initiate-segments', methods=['POST'])
@@ -748,6 +837,8 @@ def initiate_segments():
         summary = create_segment_columns(summary, recency='recency', frequency='frequency',
                                          monetary_value='monetary_value',
                                          clv='predicted_clv')
+        summary_path = os.path.join(root_path, 'summary.csv')
+        summary.to_csv(summary_path, index=False)
         print("Models fitted and summary prepared.")
 
         segment_stats, subsegment_stats, percentages_dict, all_data_dict = calculate_descriptive_statistics(
@@ -775,6 +866,13 @@ def initiate_segments():
             json.dump(all_data_dict, f)
         print("Saved segment percentages and compositions to JSON files.")
 
+        # Calculate segment averages and save to JSON
+        segment_averages = calculate_segment_averages(summary)
+        radar_json_path = os.path.join(root_path, 'radar.json')
+        segment_averages.to_json(radar_json_path, orient='records')
+        print(f"Means saved to {radar_json_path}")
+        print(segment_averages)  # Debug: Print the calculated averages
+
         # Get segment transactions
         high_value_df, risk_df, nurture_df = get_segment_transactions(merged)
         print("Segment transactions extracted.")
@@ -795,6 +893,23 @@ def initiate_segments():
         print("Exception:", e)
         return jsonify({'error': str(e)}), 500
 
+# Endpoint to read radar.json and return the results
+@app.route("/<api_name>/get-segment-avg", methods=["POST","GET"])
+def get_segment_avg(api_name):
+    project_name = request.json.get('project_name')
+    file_path = f"{ROOT_PATH}/{project_name}/radar.json"
+    print(file_path)
+
+    if not os.path.exists(file_path):
+        return jsonify({"error": "File not found"}), 404
+
+    try:
+        with open(file_path, "r") as file:
+            segment_averages = json.load(file)
+        return jsonify(segment_averages)
+    except Exception as e:
+        print("Exception:", e)
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/get_customer_segments', methods=['GET'])
 def get_customer_segments():
@@ -809,7 +924,7 @@ def get_customer_segments():
 
 # Get products data
 
-@app.route("/<api_name>/get-segment-details", methods=["POST"])
+@app.route("/<api_name>/get-segment-details", methods=["POST","GET"])
 def get_percentages(api_name):
     project_name = request.json.get('project_name')
     file_path = f"{ROOT_PATH}/{project_name}/segment_percentages.json"
