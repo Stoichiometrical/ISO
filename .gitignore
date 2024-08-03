@@ -1,0 +1,6 @@
+venv
+uk_dataset_full.csv
+.idea
+s3
+.next
+__pycache__
