@@ -9,7 +9,7 @@ ROOT_PATH = "../s3"
 
 # Load API key from .env file
 
-GOOGLE_API_KEY = "AIzaSyBjPYCxTeXake-2xFrqTteWw0fH4Tppq-E"
+GOOGLE_API_KEY = "GOOGLE_API_KEY"
 
 
 def generate_sales_recommendations(forecast_data, business_objectives):
