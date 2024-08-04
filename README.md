@@ -42,10 +42,13 @@ The backend consists of three main microservices and a Node.js REST API.
     cd path_to_microservice_folder
     ```
 
+
 2. Run the following command:
     ```bash
     python main.py
     ```
+   
+To run the prescriptive analystics engine you need to first get an API KEY for the Gemini LLM and plug it in the utility file
 
 #### Running Microservices using Containers
 
